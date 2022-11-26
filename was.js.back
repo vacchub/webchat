@@ -1,0 +1,168 @@
+// -------------------------------------------------------------------------------
+// was
+// -------------------------------------------------------------------------------
+const express = require("express")
+const { WebSocketServer } = require("ws")
+const app = express()
+
+app.use(express.static("public"))
+
+app.listen(8080, () => {
+	console.log(`was listening on port 8080`)
+})
+
+const wss = new WebSocketServer({ port: 8001 })
+
+wss.broadcast = (message) => {
+	wss.clients.forEach((user) => {
+		user.send(message);
+	});
+};
+
+wss.on("connection", (ws, request) => {
+	ws.on("message", (data) => {
+		//wss.broadcast(data.toString());
+		//ws.send(data.toString());
+		const sendbuff = send_packet('T', 'sbo_001_001', data.toString());
+		client.write(sendbuff);
+		console.log(data.toString());
+	});
+
+	ws.on("close", () => {
+		const sendbuff = send_packet('T', 'sbo_logout', "");
+		client.write(sendbuff);
+		wss.broadcast(`유저 한명이 떠났습니다. 현재 유저 ${wss.clients.size} 명`);
+		client.destroy(); // kill client after server's response
+	});
+
+	wss.broadcast(`새로운 유저가 접속했습니다. 현재 유저 ${wss.clients.size} 명`);
+
+	// -------------------------------------------------------------------------------
+	// platform
+	// -------------------------------------------------------------------------------
+	const net = require('net');
+	const STX = 0xfe;
+
+	const client = new net.Socket();
+	client.connect(16811, '127.0.0.1', function() {
+		console.log('Connected');
+		const sendbuff = send_packet('T', 'sbo_login', "");
+		client.write(sendbuff);
+	});
+
+	client.on('data', function(data) {
+		if (data[0] != STX)
+			return;
+
+		if (data[0] != STX && data[1] != STX && data[2] != STX && data[3] != STX)
+			return;
+
+		if (String.fromCharCode(data[4]) == 'P') {
+			const sendbuff = send_packet('P', '', '');
+			client.write(sendbuff);
+			return;
+		}
+		else if (String.fromCharCode(data[4]) == 'T') {
+			const rcvb = data.toString();
+
+
+			var text = data.slice(22, data.length);
+			var text2 = "";
+			var unicode = 0;
+
+console.log('rcv data length: ' + data.length);
+//console.log('text : ' + text);
+//console.log('text : ' + text[0] + ' ' + text[1] + ' ' + text[2] + ' ' + text[3] + ' ');
+//console.log('text length: ' + text.length);
+			for(var ii=0; ii<text.length; ) {
+				if (text[ii] > 122)
+				{
+					unicode = (text[ii] * 255) + text[ii] + text[ii + 1];
+					text2 = text2 + String.fromCharCode(unicode);
+					ii += 2;
+				}
+				else {
+					unicode = text[ii];
+					text2 = text2 + String.fromCharCode(unicode);
+					ii += 1;
+				}
+			}
+//console.log('text2: ' + text2);
+//console.log('text2 length: ' + text2.length);
+
+			ws.send(text2);
+console.log('Received: ' + text2);
+console.log('Received: ' + rcvb);
+
+
+//ws.send(rcvb.slice(22, getTextLength(rcvb)));
+//console.log('Received: ' + rcvb);
+			//client.destroy(); // kill client after server's response
+		}
+	});
+
+	client.on('close', function() {
+		console.log('Connection closed');
+	});
+	// -------------------------------------------------------------------------------
+})
+
+// -------------------------------------------------------------------------------
+// sned_packet()
+// -------------------------------------------------------------------------------
+function send_packet(type, trnm, data) {
+	const STX = 0xfe;
+	const dataLen = getTextLength(data);
+	const message = type + trnm.padEnd(12, " ") + String(dataLen).padStart(5, "0") + data;
+
+/*
+if (type == 'T')
+console.log('snd data length : ' + dataLen);
+*/
+
+	var tmpb = new ArrayBuffer(4 + getTextLength(message));
+	var sndb = new Uint8Array(tmpb);
+	var unicode = 0;
+	var index = 4;
+
+	sndb[0] = sndb[1] = sndb[2] = sndb[3] = 0xfe;
+	for (var ii=0, strLen=message.length; ii < strLen; ii++) {
+		unicode = message.charCodeAt(ii);
+
+
+/*
+if (type == 'T')
+console.log('escape: ' + escape(message.charAt(ii)).length);
+*/
+
+		if (escape(message.charAt(ii)).length == 6)
+		{
+			sndb[index] = unicode >>> 8;
+			index++;
+			sndb[index] = unicode & 0xff;
+		}
+		else
+		{
+			sndb[index] = unicode;
+		}
+		index++;
+	}
+
+if (type == 'T')
+console.log('Send: ' + sndb);
+	return sndb;
+};
+
+// -------------------------------------------------------------------------------
+// getTextLength()
+// -------------------------------------------------------------------------------
+var getTextLength = function(str) {
+	var len = 0;
+	for (var ii = 0; ii < str.length; ii++) {
+		if (escape(str.charAt(ii)).length == 6) {
+			len++;
+		}
+		len++;
+	}
+	return len;
+}

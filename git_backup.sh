@@ -7,9 +7,15 @@ then
 fi
 
 cd /proj/git
-git pull origin master
+
+# download
+#git pull origin master
+
 git add /proj/webchat/index.html /proj/webchat/was.js
+
 git commit -m "$1"
 git remote add origin https://github.com/vacchub/webchat.git
+
+# upload
 git push -u origin master
 

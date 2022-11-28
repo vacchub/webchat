@@ -4,10 +4,10 @@
 		<meta charset="UTF-8" />
 		<!-- <meta http-equiv="Content-Type" content="text/html; charset="utf-16" /> -->
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Websocket Chatting</title>
+		<title>녕챗</title>
 
 		<script>
-			const ws = new WebSocket("ws://127.0.0.1:8001")
+			const ws = new WebSocket("ws://103.66.189.185:8001")
 
 			function clearMessage() {
 				document.getElementById("message").value = ""
@@ -39,7 +39,7 @@
 	</head>
 
 	<body>
-		<h1>tiny챗</h1>
+		<h1>녕챗에 오신걸 환영합니다.</h1>
 		<div>
 			<input
 				type="text"
@@ -53,6 +53,7 @@
 				id="message"
 				placeholder="메세지"
 				style="width: 250px"
+				onKeypress="javascript:if(event.keyCode==13) {sendMessage()}"
 			/>
 
 			<button onClick="sendMessage()">전송</button>
